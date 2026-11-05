@@ -767,6 +767,9 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
       body { overscroll-behavior-y: contain; }
       .page { padding-block: 10px 24px; gap: 14px; max-width: 560px; }
       .x-hide { display: none !important; }
+      .x-export { display: grid; gap: 10px; margin-top: 10px; padding: 14px; border-radius: var(--r-m); background: var(--fill-tertiary); }
+      .x-export__head { font: var(--type-label); color: var(--text-primary); }
+      .x-export__btn { min-height: 56px; font: var(--type-body); }
 
       .x-bar {
         display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -1072,8 +1075,16 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
               <button class="x-tap x-tap--wide" id="set-pw">पासवर्ड बदला</button>
               <button class="x-tap x-tap--wide x-tap--solid" id="set-lock">लॉक करा</button>
             </div>
-            <input id="set-file" type="file" accept="application/json,.json" class="x-hide"/>
+            <input id="set-file" type="file" accept="application/json,.json,text/plain,*/*" class="x-hide"/>
             <p class="x-msg x-ok" id="set-msg"></p>
+            <div class="x-export x-hide" id="exp-panel" role="region" aria-label="बॅकअप तयार">
+              <p class="x-export__head">बॅकअप तयार आहे</p>
+              <button class="x-tap x-tap--wide x-tap--solid x-export__btn" id="exp-share" type="button">📤 शेअर / सेव्ह करा</button>
+              <a class="x-tap x-tap--wide x-export__btn" download="majhi-diary-backup.json" href="#" id="exp-dl">⬇️ फाइल डाउनलोड करा</a>
+              <p class="x-note">फाइल फोनच्या Downloads मध्ये किंवा तुम्ही निवडलेल्या ठिकाणी (उदा. Google Drive) सेव्ह होईल. सुरक्षिततेसाठी Google Drive मध्ये ठेवणे चांगले.</p>
+              <p class="x-note" id="exp-count"></p>
+              <button class="x-tap x-tap--ghost" id="exp-close" type="button">बंद करा</button>
+            </div>
             <p class="x-note">एक्सपोर्ट केलेली फाइल एन्क्रिप्टेड असते; ती उघडण्यासाठी त्या वेळचा पासवर्ड लागतो.</p>
             <p class="x-note">होम स्क्रीनवर ठेवण्यासाठी: Chrome मेनू ⋮ → Add to Home screen</p>
           </div>
@@ -2014,7 +2025,25 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
         $("set-lock").addEventListener("click", lock);
         function setMsg(t) { $("set-msg").textContent = t; }
 
+        var expUrl = null, expFile = null;
+        function closeExport() {
+          if (expUrl) { URL.revokeObjectURL(expUrl); expUrl = null; }
+          expFile = null;
+          $("exp-dl").setAttribute("href", "#");
+          $("exp-panel").classList.add("x-hide");
+        }
+        $("exp-close").addEventListener("click", closeExport);
+        $("exp-dl").addEventListener("click", function (e) { if (!expUrl) e.preventDefault(); });
+        $("exp-share").addEventListener("click", function () {
+          if (!expFile || !navigator.share) return;
+          navigator.share({ files: [expFile], title: "माझी डायरी बॅकअप" }).catch(function (err) {
+            if (err && err.name === "AbortError") return;
+            setMsg("शेअर करता आले नाही. ‘फाइल डाउनलोड करा’ वापरा.");
+          });
+        });
+
         $("set-export").addEventListener("click", function () {
+          closeExport();
           setMsg("बॅकअप तयार होत आहे…");
           Promise.all([allEntries(), allMedia()]).then(function (r) {
             var entries = r[0];
@@ -2022,13 +2051,22 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
               return { id: m.id, date: m.date, entryId: m.entryId, mime: m.mime, createdAt: m.createdAt, iv: b64(m.iv), data: b64(m.data) };
             });
             var data = { app: "majhiDiary", version: 3, exported: new Date().toISOString(), salt: meta.salt, iter: meta.iter, verifier: meta.verifier, entries: entries, media: media };
-            var blob = new Blob([JSON.stringify(data)], { type: "application/json" });
-            var a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = "majhi-diary-backup-" + todayKey() + ".json";
-            document.body.appendChild(a); a.click(); a.remove();
-            setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-            setMsg("बॅकअप डाउनलोड झाला (" + deva(totalItems()) + " नोंदी, " + deva(media.length) + " आवाज).");
+            var json = JSON.stringify(data);
+            var name = "majhi-diary-backup-" + todayKey() + ".json";
+            var canShareFile = false, file = null;
+            try {
+              file = new File([json], name, { type: "application/json" });
+              canShareFile = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
+            } catch (e) { canShareFile = false; }
+            expFile = canShareFile ? file : null;
+            $("exp-share").classList.toggle("x-hide", !canShareFile);
+            expUrl = URL.createObjectURL(new Blob([json], { type: "application/octet-stream" }));
+            var dl = $("exp-dl");
+            dl.setAttribute("href", expUrl);
+            dl.setAttribute("download", name);
+            $("exp-count").textContent = deva(totalItems()) + " नोंदी, " + deva(media.length) + " आवाज.";
+            $("exp-panel").classList.remove("x-hide");
+            setMsg("बॅकअप तयार आहे. खालील बटण दाबा.");
           }).catch(function () { setMsg("बॅकअप करता आला नाही."); });
         });
 
@@ -2038,7 +2076,7 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
           file.text().then(function (txt) {
             var data;
             try { data = JSON.parse(txt); } catch (e) { data = null; }
-            if (!data || data.app !== "majhiDiary" || !data.salt || !data.verifier || !data.entries) { setMsg("ही माझी डायरीची बॅकअप फाइल वाटत नाही."); return; }
+            if (!data || data.app !== "majhiDiary" || !data.salt || !data.verifier || !data.entries) { setMsg("ही माझी डायरीची बॅकअप फाइल नाही."); return; }
             var bkey = null;
             return ask({
               title: "बॅकअप इम्पोर्ट करा",
