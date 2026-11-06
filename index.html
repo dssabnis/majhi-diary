@@ -928,6 +928,16 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
       }
       .x-meta { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
       .x-meta .x-input[type="time"] { width: 130px; }
+      /* cloud sync */
+      .x-sync {
+        display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 12px;
+        border: 0; border-radius: var(--r-pill); background: var(--fill-tertiary); color: var(--text-secondary);
+        font: var(--type-tag); cursor: pointer;
+      }
+      .x-sync--err { color: color-mix(in srgb, var(--fill-system-red) 70%, var(--text-primary)); }
+      #lock-form, #lock-gh, #lock-choice { gap: 12px; }
+      .x-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; font: var(--type-small); color: var(--text-secondary); }
+      .x-steps b { color: var(--text-primary); font-weight: var(--weight-medium, 600); }
     </style>
   </head>
   <body>
@@ -950,17 +960,44 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
               <h1 style="font: var(--type-title)">माझी डायरी</h1>
               <p class="x-bar__sub" id="lock-sub">पासवर्ड टाका</p>
             </div>
-            <div class="x-field">
-              <label for="pw1">पासवर्ड</label>
-              <input class="x-input" id="pw1" type="password" inputmode="text" autocomplete="off"/>
+            <div class="x-list x-hide" id="lock-choice">
+              <button class="x-tap x-tap--solid x-tap--wide" id="choice-new" type="button">नवीन डायरी सुरू करा</button>
+              <button class="x-tap x-tap--wide" id="choice-gh" type="button">☁️ GitHub वरून माझी डायरी आणा</button>
+              <p class="x-note">दुसऱ्या फोन/कॉम्प्युटरवर आधीच डायरी असेल आणि तिथे क्लाउड सिंक चालू असेल, तर दुसरा पर्याय निवडा.</p>
             </div>
-            <div class="x-field x-hide" id="pw2-wrap">
-              <label for="pw2">पासवर्ड पुन्हा टाका</label>
-              <input class="x-input" id="pw2" type="password" autocomplete="off"/>
+            <div class="x-list" id="lock-form">
+              <div class="x-field">
+                <label for="pw1">पासवर्ड</label>
+                <input class="x-input" id="pw1" type="password" inputmode="text" autocomplete="off"/>
+              </div>
+              <div class="x-field x-hide" id="pw2-wrap">
+                <label for="pw2">पासवर्ड पुन्हा टाका</label>
+                <input class="x-input" id="pw2" type="password" autocomplete="off"/>
+              </div>
+              <p class="x-msg" id="lock-msg"></p>
+              <button class="x-tap x-tap--solid x-tap--wide" id="lock-go">उघडा</button>
+              <button class="x-tap x-tap--ghost x-hide" id="lock-back" type="button">मागे</button>
             </div>
-            <p class="x-msg" id="lock-msg"></p>
-            <button class="x-tap x-tap--solid x-tap--wide" id="lock-go">उघडा</button>
-            <p class="x-note">⚠️ पासवर्ड विसरल्यास डायरी परत उघडता येणार नाही. डायरी फक्त या फोनमध्ये, एन्क्रिप्ट करून साठवली जाते.</p>
+            <div class="x-list x-hide" id="lock-gh">
+              <ol class="x-steps gh-steps"></ol>
+              <button class="x-tap x-tap--wide gh-token-link" type="button">🔑 GitHub वर टोकन बनवा</button>
+              <div class="x-field">
+                <label for="fg-repo">रिपॉझिटरी (owner/नाव)</label>
+                <input class="x-input" id="fg-repo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"/>
+              </div>
+              <div class="x-field">
+                <label for="fg-token">GitHub टोकन</label>
+                <input class="x-input" id="fg-token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"/>
+              </div>
+              <div class="x-field">
+                <label for="fg-pw">डायरीचा पासवर्ड (दुसऱ्या डिव्हाइसवरचा)</label>
+                <input class="x-input" id="fg-pw" type="password" autocomplete="off"/>
+              </div>
+              <p class="x-msg" id="fg-msg"></p>
+              <button class="x-tap x-tap--solid x-tap--wide" id="fg-go" type="button">डायरी आणा</button>
+              <button class="x-tap x-tap--ghost" id="fg-back" type="button">मागे</button>
+            </div>
+            <p class="x-note" id="lock-note">⚠️ पासवर्ड विसरल्यास डायरी परत उघडता येणार नाही. डायरी फक्त या फोनमध्ये, एन्क्रिप्ट करून साठवली जाते.</p>
           </div>
         </section>
 
@@ -993,6 +1030,7 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
           <div class="x-row">
             <button class="x-tap" id="go-settings">⚙︎ सेटिंग्ज</button>
             <button class="x-tap" id="go-lock">🔒 लॉक करा</button>
+            <button class="x-sync x-hide" id="sync-chip" type="button" aria-live="polite"></button>
             <span class="x-count" id="cal-count"></span>
           </div>
         </section>
@@ -1072,6 +1110,7 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
             <div class="x-list">
               <button class="x-tap x-tap--wide" id="set-export">बॅकअप एक्सपोर्ट करा</button>
               <button class="x-tap x-tap--wide" id="set-import">बॅकअप इम्पोर्ट करा</button>
+              <button class="x-tap x-tap--wide" id="set-cloud">☁️ क्लाउड सिंक (GitHub)</button>
               <button class="x-tap x-tap--wide" id="set-pw">पासवर्ड बदला</button>
               <button class="x-tap x-tap--wide x-tap--solid" id="set-lock">लॉक करा</button>
             </div>
@@ -1087,6 +1126,41 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
             </div>
             <p class="x-note">एक्सपोर्ट केलेली फाइल एन्क्रिप्टेड असते; ती उघडण्यासाठी त्या वेळचा पासवर्ड लागतो.</p>
             <p class="x-note">होम स्क्रीनवर ठेवण्यासाठी: Chrome मेनू ⋮ → Add to Home screen</p>
+          </div>
+        </section>
+
+        <!-- cloud sync -->
+        <section id="screen-cloud" class="x-hide">
+          <div class="x-bar">
+            <div class="x-bar__title">
+              <h1>☁️ क्लाउड सिंक (GitHub)</h1>
+              <p class="x-bar__sub">फोन आणि कॉम्प्युटरवर एकच डायरी</p>
+            </div>
+            <button class="x-tap" id="cloud-back">मागे</button>
+          </div>
+          <div class="x-card">
+            <p class="x-banner" id="cloud-state">सिंक बंद आहे.</p>
+            <div class="x-row">
+              <button class="x-sync x-hide" id="cloud-chip" type="button"></button>
+            </div>
+            <ol class="x-steps gh-steps"></ol>
+            <button class="x-tap x-tap--wide gh-token-link" type="button">🔑 GitHub वर टोकन बनवा</button>
+            <div class="x-field">
+              <label for="cl-repo">रिपॉझिटरी (owner/नाव)</label>
+              <input class="x-input" id="cl-repo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"/>
+            </div>
+            <div class="x-field">
+              <label for="cl-token">GitHub टोकन</label>
+              <input class="x-input" id="cl-token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"/>
+            </div>
+            <p class="x-msg" id="cloud-msg"></p>
+            <div class="x-list">
+              <button class="x-tap x-tap--solid x-tap--wide" id="cloud-save" type="button">जतन करा आणि सिंक सुरू करा</button>
+              <button class="x-tap x-tap--wide x-hide" id="cloud-now" type="button">आता सिंक करा</button>
+              <button class="x-tap x-tap--wide x-tap--danger x-hide" id="cloud-off" type="button">या डिव्हाइसवर सिंक बंद करा</button>
+            </div>
+            <p class="x-note">टोकन या डिव्हाइसमध्ये तुमच्या डायरीच्या पासवर्डने एन्क्रिप्ट करून ठेवले जाते. नोंदी आणि आवाज GitHub वर फक्त एन्क्रिप्ट करूनच जातात; पासवर्डशिवाय कोणालाही वाचता येत नाहीत.</p>
+            <p class="x-note">दुसऱ्या फोन/कॉम्प्युटरवर: डायरी उघडताना “GitHub वरून माझी डायरी आणा” निवडा आणि तिथे वेगळे टोकन बनवा.</p>
           </div>
         </section>
       </main>
@@ -1356,7 +1430,7 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
         function totalItems() { var n = 0; Object.keys(days).forEach(function (k) { n += days[k].length; }); return n; }
 
         function show(id) {
-          ["screen-unsupported", "screen-lock", "screen-cal", "screen-day", "screen-edit", "screen-set"].forEach(function (s) {
+          ["screen-unsupported", "screen-lock", "screen-cal", "screen-day", "screen-edit", "screen-set", "screen-cloud"].forEach(function (s) {
             $(s).classList.toggle("x-hide", s !== id);
           });
           window.scrollTo(0, 0);
@@ -1410,13 +1484,30 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
           var job = dayJob.catch(noop).then(function () {
             var kk = key;
             if (!kk) throw new Error("locked");
+            var before = (days[k] || []).map(function (x) { return x.id; });
             var items = (days[k] || []).map(function (x) { return Object.assign({}, x); });
             items = sortItems(fn(items) || items);
-            var p = items.length
-              ? seal(kk, { v: 2, items: items, u: Date.now() }).then(function (rec) { return put(STORE, k, rec); })
-              : del(STORE, k);
-            return p.then(function () { if (key !== kk) return; if (items.length) days[k] = items; else delete days[k]; });
+            /* entries that disappeared get a tombstone so the deletion reaches other devices */
+            var gone = before.filter(function (id) { return !items.some(function (x) { return x.id === id; }); });
+            if (gone.length) { var t = Date.now(); gone.forEach(function (id) { tombs.e[id] = t; }); }
+            var p = items.length ? seal(kk, { v: 2, items: items, u: Date.now() }) : Promise.resolve(null);
+            return p.then(function (rec) {
+              return tx([STORE, META], "readwrite", function (s) {
+                if (rec) s[0].put(rec, k); else s[0].delete(k);
+                if (gone.length) s[1].put(tombs, "tombs");
+              });
+            }).then(function () {
+              if (key !== kk) return;
+              if (items.length) days[k] = items; else delete days[k];
+              scheduleSync();
+            });
           });
+          dayJob = job;
+          return job;
+        }
+        /* run fn in the same queue as day writes, so a sync merge never interleaves with a save */
+        function queueDay(fn) {
+          var job = dayJob.catch(noop).then(fn);
           dayJob = job;
           return job;
         }
@@ -1572,9 +1663,32 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
           $("pw2-wrap").classList.toggle("x-hide", !firstRun);
           $("lock-go").textContent = firstRun ? "पासवर्ड ठेवा" : "उघडा";
           $("pw1").value = ""; $("pw2").value = ""; $("lock-msg").textContent = "";
+          $("lock-choice").classList.toggle("x-hide", !firstRun);
+          $("lock-form").classList.toggle("x-hide", firstRun);
+          $("lock-gh").classList.add("x-hide");
+          $("lock-back").classList.add("x-hide");
+          $("fg-token").value = ""; $("fg-pw").value = ""; $("fg-msg").textContent = "";
+          if (firstRun) $("lock-sub").textContent = "पहिल्यांदा वापरताय: खालीलपैकी एक निवडा";
+          $("lock-note").textContent = cloud && cloud.repo
+            ? "⚠️ पासवर्ड विसरल्यास डायरी परत उघडता येणार नाही. डायरी या डिव्हाइसमध्ये आणि तुमच्या खाजगी GitHub रिपॉझिटरीत, फक्त एन्क्रिप्ट करून साठवली जाते."
+            : "⚠️ पासवर्ड विसरल्यास डायरी परत उघडता येणार नाही. डायरी फक्त या फोनमध्ये, एन्क्रिप्ट करून साठवली जाते.";
           show("screen-lock");
-          setTimeout(function () { $("pw1").focus(); }, 50);
+          if (!firstRun) setTimeout(function () { $("pw1").focus(); }, 50);
         }
+        $("choice-new").addEventListener("click", function () {
+          $("lock-choice").classList.add("x-hide"); $("lock-form").classList.remove("x-hide"); $("lock-back").classList.remove("x-hide");
+          $("lock-sub").textContent = "पहिल्यांदा वापरताय: नवीन पासवर्ड ठेवा";
+          setTimeout(function () { $("pw1").focus(); }, 50);
+        });
+        $("lock-back").addEventListener("click", function () { showLock(); });
+        $("choice-gh").addEventListener("click", function () {
+          $("lock-choice").classList.add("x-hide"); $("lock-gh").classList.remove("x-hide");
+          $("lock-sub").textContent = "GitHub वरून माझी डायरी आणा";
+          if (!$("fg-repo").value) $("fg-repo").value = (cloud && cloud.repo) || DEFAULT_REPO;
+          renderSteps();
+          setTimeout(function () { $("fg-token").focus(); }, 50);
+        });
+        $("fg-back").addEventListener("click", function () { showLock(); });
         function unlock() {
           var p1 = $("pw1").value, p2 = $("pw2").value, msg = $("lock-msg"), btn = $("lock-go");
           msg.textContent = "";
@@ -1603,7 +1717,7 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
             if (!k) { btn.textContent = "उघडा"; msg.textContent = "पासवर्ड चुकीचा आहे."; $("pw1").select(); return; }
             key = k; $("pw1").value = ""; $("pw2").value = "";
             btn.disabled = true; btn.textContent = "थांबा…";
-            return loadAll().then(function () { btn.disabled = false; goToday(); show("screen-cal"); });
+            return loadAll().then(function () { btn.disabled = false; goToday(); show("screen-cal"); cloudOnUnlock(); });
           }).catch(function () {
             btn.disabled = false; btn.textContent = firstRun ? "पासवर्ड ठेवा" : "उघडा";
             msg.textContent = "काहीतरी चुकले. पुन्हा प्रयत्न करा.";
@@ -1621,7 +1735,7 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
           stopVoice();
           var p = stopRec(false).then(function () { return current && dirty ? saveNow() : saving; });
           return p.catch(function () {}).then(function () {
-            stopAutosave(); key = null; current = null; curDate = null; dayDate = null; dirty = false;
+            stopAutosave(); cloudOnLock(); key = null; current = null; curDate = null; dayDate = null; dirty = false;
             days = {}; clipN = {}; $("day-list").innerHTML = "";
             resetEditor();
             if (sheetResolve) closeSheet(null);
@@ -1783,10 +1897,15 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
             stopVoice(); stopAutosave(); dirty = false;
             stopRec(true).then(function () { return saving; }).catch(noop).then(function () {
               dirty = false;
+              var goneClips = [];
               return tx(MEDIA, "readwrite", function (s) {
                 s.index("date").openCursor(IDBKeyRange.only(k)).onsuccess = function (ev) {
-                  var c = ev.target.result; if (c) { if (c.value.entryId === id) c.delete(); c.continue(); }
+                  var c = ev.target.result; if (c) { if (c.value.entryId === id) { goneClips.push(c.value.id); c.delete(); } c.continue(); }
                 };
+              }).then(function () {
+                if (!goneClips.length) return;
+                var t = Date.now(); goneClips.forEach(function (cid) { tombs.c[cid] = t; });
+                return put(META, "tombs", tombs);
               });
             }).then(function () {
               delete clipN[id];
@@ -1842,6 +1961,7 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
               };
               return tx(MEDIA, "readwrite", function (s) { s.put(rec); }).then(function () {
                 clipN[eid] = (clipN[eid] || 0) + 1;
+                scheduleSync();
                 if (current === eid) {
                   clips.push(rec); renderClips(); recMsg("आवाज जतन झाला.", true);
                   dirty = true; return saveNow();
@@ -1863,6 +1983,9 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
           ask({ title: "हा आवाज हटवायचा का?", yes: "हो", no: "नाही", danger: true }).then(function (ok) {
             if (!ok || current !== k) return;
             del(MEDIA, id).then(function () {
+              tombs.c[id] = Date.now();
+              return put(META, "tombs", tombs).catch(noop);
+            }).then(function () {
               if (clipUrls[id]) { clipUrls[id].then(function (u) { URL.revokeObjectURL(u); }, noop); delete clipUrls[id]; }
               clips = clips.filter(function (c) { return c.id !== id; });
               clipN[k] = clips.length;
@@ -2018,6 +2141,7 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
           if (!$("screen-edit").classList.contains("x-hide")) leaveEditor();
           else if (!$("screen-day").classList.contains("x-hide")) backToCal();
           else if (!$("screen-set").classList.contains("x-hide")) backToCal();
+          else if (!$("screen-cloud").classList.contains("x-hide")) { if (cloudFrom === "cal") backToCal(); else { $("set-msg").textContent = ""; show("screen-set"); } }
         });
 
         /* ---------- settings ---------- */
@@ -2154,6 +2278,7 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
                   });
                 }).then(loadAll).then(function () {
                   setMsg("इम्पोर्ट पूर्ण: " + deva(added) + " नोंदी आणि " + deva(mOut.length) + " आवाज आले.");
+                  scheduleSync(0);
                 });
               });
             });
@@ -2198,18 +2323,694 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
                   });
                 }, Promise.resolve());
               }).then(function () {
+                if (!cloud || !ghToken) return null;
+                /* the cloud copy still uses the old salt: remember it so the next sync replaces it (this device wins) */
+                return seal(newKey, ghToken).then(function (rec) {
+                  return Object.assign({}, cloud, { tok: rec, pendingOld: cloud.pendingOld || meta.salt });
+                });
+              }).then(function (cloudNew) {
                 return tx([STORE, MEDIA, META], "readwrite", function (s) {
                   Object.keys(out).forEach(function (k) { s[0].put(out[k], k); });
                   mOut.forEach(function (m) { s[1].put(m); });
                   s[2].put(newMeta, "crypto");
-                });
-              }).then(function () {
+                  if (cloudNew) s[2].put(cloudNew, "cloud");
+                }).then(function () { return cloudNew; });
+              }).then(function (cloudNew) {
+                if (cloudNew) { if (!cloud.pendingOld) oldKeyMem = key; cloud = cloudNew; }
                 key = newKey; meta = newMeta;
+                scheduleSync(0);
                 setMsg("पासवर्ड बदलला. " + deva(totalItems()) + " नोंदी आणि " + deva(mOut.length) + " आवाज पुन्हा एन्क्रिप्ट झाले.");
               });
             });
           }).catch(function () { setMsg("पासवर्ड बदलता आला नाही. जुना पासवर्ड चालू आहे."); });
         });
+
+        /* ---------- cloud sync (GitHub) ----------
+           Remote layout in the user's private data repo:
+             diary.json            { app, kind:"sync", v:1, salt, iter, verifier,
+                                     entries: { <entryId>: {u, iv, ct} | {u, del:1} },
+                                     clips:   { <cid>:     {u, iv, ct} | {u, del:1} } }
+                                   entry ct = sealed {date, item}; clip ct = sealed {id, date, entryId, mime, createdAt}
+             audio/<cid>.json      { app, v:1, s: salt, iv, data }   (data = the clip's AES-GCM ciphertext)
+           cid = first 32 hex of SHA-256("majhiDiary-clip:" + clipId), so file names carry no dates.
+           Nothing readable leaves the device: text, titles, dates and audio are all sealed with the diary key. */
+        var GH_API = "https://api.github.com", DEFAULT_REPO = "dssabnis/majhi-diary-data", DATA_FILE = "diary.json";
+        var SYNC_DEBOUNCE_MS = 3000, SYNC_POLL_MS = 2 * 60 * 1000;
+        var cloud = null;          /* META "cloud": { repo, tok: sealed token, pendingOld?: old salt after a password change } */
+        var ghToken = null;        /* decrypted token, in memory only while unlocked */
+        var tombs = { e: {}, c: {} };  /* META "tombs": deleted entry ids / clip ids -> deletedAt */
+        var oldKeyMem = null;      /* previous key after a password change, until the cloud copy is replaced */
+        var syncState = { st: "", detail: "", needPw: null, at: 0 };
+        var syncRun = null, syncAgain = false, syncTimer = null, syncPoll = null, syncRetry = 0, cidCache = {};
+
+        function utf8(bytes) { return dec.decode(bytes); }
+        function ghErr(status, msg) { var e = new Error(msg || "github " + status); e.status = status; return e; }
+        function httpErr(r) {
+          var e = ghErr(r.status);
+          if (r.status === 429 || (r.status === 403 && r.headers && r.headers.get("x-ratelimit-remaining") === "0")) e.rate = true;
+          return e;
+        }
+        function ghFetch(ctx, method, path, body, accept) {
+          var url = GH_API + "/repos/" + ctx.repo + (path ? "/contents/" + path : "");
+          var init = { method: method, cache: "no-store", headers: { Authorization: "Bearer " + ctx.tok, Accept: accept || "application/vnd.github+json" } };
+          if (body) { init.headers["Content-Type"] = "application/json"; init.body = JSON.stringify(body); }
+          var f;
+          try { f = fetch(url, init); } catch (e) { f = Promise.reject(e); }
+          return f.then(null, function () { var x = ghErr(0, "network"); x.offline = true; throw x; });
+        }
+        /* GET a file: small files come base64 in the JSON, files over 1 MB need the raw media type */
+        function getFile(ctx, path) {
+          return ghFetch(ctx, "GET", path).then(function (r) {
+            if (r.status === 404) return null;
+            if (!r.ok) throw httpErr(r);
+            return r.json().then(function (j) {
+              if (!j || Array.isArray(j) || j.type !== "file") { var e = ghErr(0, "notfile"); e.badRemote = true; throw e; }
+              if (j.encoding === "base64" && j.content) return { sha: j.sha, text: utf8(unb64(j.content.replace(/\s/g, ""))) };
+              return ghFetch(ctx, "GET", path, null, "application/vnd.github.raw").then(function (r2) {
+                if (!r2.ok) throw httpErr(r2);
+                return r2.text().then(function (t) { return { sha: j.sha, text: t }; });
+              });
+            });
+          });
+        }
+        function fileSha(ctx, path) {
+          return ghFetch(ctx, "GET", path).then(function (r) {
+            if (r.status === 404) return null;
+            if (!r.ok) throw httpErr(r);
+            return r.json().then(function (j) { return j && j.sha || null; });
+          });
+        }
+        /* PUT needs the current sha when the file exists; 409/422 means someone else changed it */
+        function putFile(ctx, path, text, sha) {
+          var body = { message: "Majhi Diary sync", content: b64(enc.encode(text)) };
+          if (sha) body.sha = sha;
+          return ghFetch(ctx, "PUT", path, body).then(function (r) {
+            if (r.status === 409 || r.status === 422) { var e = httpErr(r); e.conflict = true; throw e; }
+            if (!r.ok) throw httpErr(r);
+            return r.json().then(function (j) { return j && j.content && j.content.sha; }, function () { return null; });
+          });
+        }
+        function putBlobFile(ctx, path, text) {
+          return putFile(ctx, path, text, null).catch(function (e) {
+            if (!e.conflict) throw e;
+            return fileSha(ctx, path).then(function (sha) { return putFile(ctx, path, text, sha); });
+          });
+        }
+        function deleteFile(ctx, path) {
+          return fileSha(ctx, path).then(function (sha) {
+            if (!sha) return;
+            return ghFetch(ctx, "DELETE", path, { message: "Majhi Diary sync", sha: sha }).then(function (r) {
+              if (!r.ok && r.status !== 404) throw httpErr(r);
+            });
+          });
+        }
+        function checkRepo(ctx) {
+          return ghFetch(ctx, "GET", null).then(function (r) {
+            if (!r.ok) throw httpErr(r);
+            return r.json().then(function (j) {
+              if (j && j.private === false) { var e = ghErr(0, "public"); e.isPublic = true; throw e; }
+            });
+          });
+        }
+        function parseRemote(f) {
+          if (!f) return null;
+          var d = null;
+          try { d = JSON.parse(f.text); } catch (e) { d = null; }
+          if (!d || d.app !== "majhiDiary" || !d.salt || !d.verifier || !d.verifier.iv) { var x = ghErr(0, "bad"); x.badRemote = true; throw x; }
+          d.entries = d.entries || {}; d.clips = d.clips || {}; d.iter = d.iter || ITER;
+          return { sha: f.sha, doc: d };
+        }
+        function errText(e) {
+          if (!e) return "";
+          if (e.offline) return "इंटरनेट नाही. नोंदी या डिव्हाइसवर सुरक्षित आहेत; इंटरनेट आल्यावर आपोआप पाठवल्या जातील.";
+          if (e.status === 401) return "GitHub टोकन चुकीचे आहे किंवा त्याची मुदत संपली आहे. सेटिंग्ज → ☁️ क्लाउड सिंक मध्ये नवीन टोकन बनवून टाका.";
+          if (e.rate) return "GitHub ची तात्पुरती मर्यादा संपली. थोड्या वेळाने आपोआप पुन्हा प्रयत्न होईल.";
+          if (e.status === 403) return "या टोकनला रिपॉझिटरीत लिहिण्याची परवानगी नाही. नवीन टोकन बनवताना ‘Only select repositories’ मध्ये डेटा रिपॉझिटरी निवडा आणि ‘Contents: Read and write’ ठेवा (सेटिंग्ज → ☁️ क्लाउड सिंक).";
+          if (e.status === 404) return "रिपॉझिटरी सापडली नाही, किंवा या टोकनला तिची परवानगी नाही. सेटिंग्ज → ☁️ क्लाउड सिंक मध्ये रिपॉझिटरीचे नाव आणि टोकन तपासा.";
+          if (e.isPublic) return "ही रिपॉझिटरी सार्वजनिक (Public) आहे. डायरीसाठी फक्त खाजगी (Private) रिपॉझिटरी वापरा.";
+          if (e.badRemote) return "रिपॉझिटरीतील diary.json ही ‘माझी डायरी’ची फाइल नाही. वेगळी रिपॉझिटरी वापरा.";
+          if (e.needPw) return e.isOld
+            ? "या डिव्हाइसवर पासवर्ड बदलला, पण क्लाउडवर अजून जुन्या पासवर्डची डायरी आहे. इथे टॅप करून जुना पासवर्ड एकदा टाका."
+            : "क्लाउडवरील डायरी वेगळ्या पासवर्डने सुरक्षित आहे (कदाचित दुसऱ्या डिव्हाइसवर पासवर्ड बदलला). इथे टॅप करून तो पासवर्ड टाका.";
+          if (e.status >= 500) return "GitHub सध्या उपलब्ध नाही. थोड्या वेळाने आपोआप पुन्हा प्रयत्न होईल.";
+          if (e.conflict) return "दुसऱ्या डिव्हाइसवरूनही त्याच वेळी बदल होत होते. थोड्या वेळाने आपोआप पुन्हा प्रयत्न होईल.";
+          return "सिंक करता आले नाही (" + (e.status || e.message || "?") + "). थोड्या वेळाने आपोआप पुन्हा प्रयत्न होईल.";
+        }
+        function cidOf(clipId) {
+          if (cidCache[clipId]) return Promise.resolve(cidCache[clipId]);
+          return crypto.subtle.digest("SHA-256", enc.encode("majhiDiary-clip:" + clipId)).then(function (h) {
+            var a = new Uint8Array(h), s = "";
+            for (var i = 0; i < 16; i++) s += (a[i] < 16 ? "0" : "") + a[i].toString(16);
+            return (cidCache[clipId] = s);
+          });
+        }
+        function seq(list, fn) { return list.reduce(function (p, x) { return p.then(function () { return fn(x); }); }, Promise.resolve()); }
+
+        /* ---- merge entries (runs inside the day queue; no network here) ----
+           per entry id: newer updatedAt wins; tombstones carry the deletion time. */
+        function mergeEntries(rdoc, rkey, kk) {
+          if (key !== kk) return Promise.reject(new Error("locked"));
+          var R = rdoc ? rdoc.entries : {}, out = {}, changed = !rdoc, ids = {}, local = {};
+          var nd = {}, touched = {}, tombChanged = false, killClips = {};
+          Object.keys(days).forEach(function (k) { days[k].forEach(function (it) { local[it.id] = { date: k, item: it }; ids[it.id] = 1; }); });
+          Object.keys(tombs.e).forEach(function (id) { ids[id] = 1; });
+          Object.keys(R).forEach(function (id) { ids[id] = 1; });
+          function dayCopy(k) { if (!nd[k]) nd[k] = (days[k] || []).map(function (x) { return Object.assign({}, x); }); return nd[k]; }
+          function removeLocal(id) {
+            var L = local[id]; if (!L) return;
+            var arr = dayCopy(L.date);
+            for (var i = arr.length - 1; i >= 0; i--) if (arr[i].id === id) arr.splice(i, 1);
+            touched[L.date] = 1;
+          }
+          return seq(Object.keys(ids), function (id) {
+            var L = local[id], T = tombs.e[id], r = R[id];
+            var lu = L ? (L.item.updated || L.item.created || 0) : (T || -1);
+            var ru = r ? (r.u || 0) : -1;
+            if (r && ru > lu) {
+              if (r.del) {
+                if (L) { removeLocal(id); (killClips[L.date] = killClips[L.date] || {})[id] = 1; }
+                if (tombs.e[id] !== ru) { tombs.e[id] = ru; tombChanged = true; }
+                out[id] = { u: ru, del: 1 };
+                return;
+              }
+              return open(rkey, r).then(function (pl) {
+                if (!pl || !/^\d{4}-\d{2}-\d{2}$/.test(pl.date || "") || !pl.item) return;
+                var it = normItem(pl.item); it.id = id; it.updated = ru;
+                if (L) removeLocal(id);
+                dayCopy(pl.date).push(it); touched[pl.date] = 1;
+                if (T !== undefined) { delete tombs.e[id]; tombChanged = true; }
+                if (rkey === kk) { out[id] = r; return; }
+                changed = true;
+                return seal(kk, { date: pl.date, item: it }).then(function (rec) { rec.u = ru; out[id] = rec; });
+              });
+            }
+            if (lu > ru || (rkey !== kk && lu === ru && lu >= 0)) {
+              changed = true;
+              if (L) return seal(kk, { date: L.date, item: L.item }).then(function (rec) { rec.u = lu; out[id] = rec; });
+              out[id] = { u: lu, del: 1 };
+              return;
+            }
+            if (r) out[id] = r;
+          }).then(function () {
+            var dates = Object.keys(touched), sealed = {}, clipGone = [];
+            if (!dates.length && !tombChanged) return { entries: out, changed: changed, localChanged: false };
+            return seq(dates, function (k) {
+              if (!nd[k].length) return;
+              return seal(kk, { v: 2, items: sortItems(nd[k]), u: Date.now() }).then(function (rec) { sealed[k] = rec; });
+            }).then(function () {
+              if (key !== kk) throw new Error("locked");
+              var t = Date.now();
+              return tx([STORE, MEDIA, META], "readwrite", function (s) {
+                dates.forEach(function (k) { if (sealed[k]) s[0].put(sealed[k], k); else s[0].delete(k); });
+                /* clips of entries deleted elsewhere go too */
+                Object.keys(killClips).forEach(function (k) {
+                  s[1].index("date").openCursor(IDBKeyRange.only(k)).onsuccess = function (ev) {
+                    var c = ev.target.result; if (!c) return;
+                    if (killClips[k][c.value.entryId]) { clipGone.push(c.value); tombs.c[c.value.id] = t; c.delete(); }
+                    c.continue();
+                  };
+                });
+                s[2].put(tombs, "tombs");
+              });
+            }).then(function () {
+              if (clipGone.length) put(META, "tombs", tombs).catch(noop);
+              if (key !== kk) return { entries: out, changed: changed, localChanged: false };
+              dates.forEach(function (k) { if (nd[k].length) days[k] = sortItems(nd[k]); else delete days[k]; });
+              clipGone.forEach(function (c) { if (clipN[c.entryId]) clipN[c.entryId]--; });
+              return { entries: out, changed: changed, localChanged: dates.length > 0 };
+            });
+          });
+        }
+
+        /* ---- merge clips (network: uploads and downloads audio files) ---- */
+        function syncClips(ctx, rdoc, rkey, kk) {
+          var R = rdoc ? rdoc.clips : {}, out = {}, res = { clips: out, changed: !rdoc, localChanged: false, errors: 0 };
+          var localIds = [], byCid = {}, tombByCid = {}, tombsDirty = false;
+          return tx(MEDIA, "readonly", function (s) { return s.getAllKeys(); }).then(function (ks) {
+            localIds = ks || [];
+            return seq(localIds, function (id) { return cidOf(id).then(function (c) { byCid[c] = id; }); });
+          }).then(function () {
+            return seq(Object.keys(tombs.c), function (id) { return cidOf(id).then(function (c) { tombByCid[c] = id; }); });
+          }).then(function () {
+            var all = {};
+            [byCid, tombByCid, R].forEach(function (o) { Object.keys(o).forEach(function (c) { all[c] = 1; }); });
+            return seq(Object.keys(all), function (cid) {
+              if (key !== kk) throw new Error("locked");
+              var lid = byCid[cid], tid = tombByCid[cid], r = R[cid], path = "audio/" + cid + ".json";
+              var one;
+              if (lid) {
+                if (r && r.del) {
+                  /* deleted on another device */
+                  one = tx(MEDIA, "readwrite", function (s) {
+                    var g = s.get(lid);
+                    g.onsuccess = function () { if (g.result) { var e = g.result.entryId; if (clipN[e]) clipN[e]--; s.delete(lid); } };
+                  }).then(function () { tombs.c[lid] = r.u; tombsDirty = true; res.localChanged = true; out[cid] = r; });
+                } else if (r && rkey === kk) {
+                  out[cid] = r; return;
+                } else {
+                  /* new here (or the cloud copy uses an old key): upload the encrypted audio, then list it */
+                  one = get(MEDIA, lid).then(function (m) {
+                    if (!m) return;
+                    var file = JSON.stringify({ app: "majhiDiary", v: 1, s: meta.salt, iv: b64(m.iv), data: b64(m.data) });
+                    return putBlobFile(ctx, path, file).then(function () {
+                      return seal(kk, { id: m.id, date: m.date, entryId: m.entryId, mime: m.mime, createdAt: m.createdAt });
+                    }).then(function (rec) { rec.u = m.createdAt || Date.now(); out[cid] = rec; res.changed = true; });
+                  });
+                }
+              } else if (tid) {
+                if (r && !r.del) {
+                  out[cid] = { u: tombs.c[tid], del: 1 }; res.changed = true;
+                  one = deleteFile(ctx, path).catch(function (e) { if (e.offline) throw e; });
+                } else if (r) { out[cid] = r; return; }
+                else return;
+              } else if (r) {
+                if (r.del) { out[cid] = r; return; }
+                /* on the cloud but not here: download */
+                one = open(rkey, r).then(function (m) {
+                  if (!m || !m.id) { out[cid] = r; return; }
+                  if (tombs.e[m.entryId]) {
+                    out[cid] = { u: Date.now(), del: 1 }; tombs.c[m.id] = out[cid].u; tombsDirty = true; res.changed = true;
+                    return deleteFile(ctx, path).catch(function (e) { if (e.offline) throw e; });
+                  }
+                  return getFile(ctx, path).then(function (f) {
+                    var a = null;
+                    try { a = f && JSON.parse(f.text); } catch (e) { a = null; }
+                    if (!a || !a.iv || !a.data || a.s !== rdoc.salt) { res.errors++; out[cid] = r; return; }
+                    var iv = unb64(a.iv), data = unb64(a.data);
+                    var p = rkey === kk ? Promise.resolve({ iv: iv, data: data.buffer })
+                      : crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, rkey, data).then(function (pt) {
+                          var iv2 = rand(12);
+                          return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv2 }, kk, pt).then(function (ct) { return { iv: iv2, data: ct }; });
+                        });
+                    return p.then(function (c) {
+                      if (key !== kk) throw new Error("locked");
+                      var rec = { id: m.id, date: m.date, entryId: m.entryId, mime: m.mime || "audio/webm", createdAt: m.createdAt || Date.now(), iv: c.iv, data: c.data };
+                      return tx(MEDIA, "readwrite", function (s) { s.put(rec); }).then(function () {
+                        clipN[m.entryId] = (clipN[m.entryId] || 0) + 1; res.localChanged = true;
+                        if (rkey === kk) { out[cid] = r; return; }
+                        res.changed = true;
+                        /* cloud file is under the old key: re-upload under the current one */
+                        return putBlobFile(ctx, path, JSON.stringify({ app: "majhiDiary", v: 1, s: meta.salt, iv: b64(c.iv), data: b64(c.data) })).then(function () {
+                          return seal(kk, m);
+                        }).then(function (sr) { sr.u = r.u; out[cid] = sr; });
+                      });
+                    });
+                  });
+                });
+              }
+              return Promise.resolve(one).catch(function (e) {
+                if (e.offline || e.status === 401 || e.status === 403 || e.status === 404 || e.message === "locked") throw e;
+                res.errors++;
+                if (r && !out[cid]) out[cid] = r;
+              });
+            });
+          }).then(function () {
+            if (tombsDirty) return put(META, "tombs", tombs);
+          }).then(function () { return res; });
+        }
+
+        /* ---- one full sync: pull, merge, push; retries on a sha conflict ---- */
+        function doSync() {
+          var kk = key, ctx = { repo: cloud && cloud.repo, tok: ghToken };
+          if (!kk || !ctx.tok || !ctx.repo) return Promise.resolve();
+          if (navigator.onLine === false) { var off = ghErr(0, "network"); off.offline = true; return Promise.reject(off); }
+          setSync("busy");
+          var attempt = 0;
+          function round() {
+            var remote, rdoc, rkey = kk, localWins = false, er, cr;
+            return getFile(ctx, DATA_FILE).then(function (f) {
+              remote = parseRemote(f); rdoc = remote && remote.doc;
+              if (key !== kk) throw new Error("locked");
+              if (cloud.pendingOld && (!rdoc || rdoc.salt === meta.salt)) { delete cloud.pendingOld; oldKeyMem = null; saveCloud(); }
+              if (rdoc && rdoc.salt !== meta.salt) {
+                if (cloud.pendingOld && rdoc.salt === cloud.pendingOld && oldKeyMem) { rkey = oldKeyMem; localWins = true; }
+                else {
+                  var x = ghErr(0, "needpw"); x.needPw = true; x.remote = remote;
+                  x.isOld = !!(cloud.pendingOld && rdoc.salt === cloud.pendingOld);
+                  throw x;
+                }
+              }
+              return queueDay(function () { return mergeEntries(rdoc, rkey, kk); });
+            }).then(function (r1) {
+              er = r1;
+              if (er.localChanged) refreshViews();
+              return syncClips(ctx, rdoc, rkey, kk);
+            }).then(function (r2) {
+              cr = r2;
+              if (cr.localChanged) refreshViews();
+              if (key !== kk) throw new Error("locked");
+              if (!(er.changed || cr.changed || !rdoc || localWins)) return cr;
+              var doc = {
+                app: "majhiDiary", kind: "sync", v: 1, salt: meta.salt, iter: meta.iter, verifier: meta.verifier,
+                updated: new Date().toISOString(), entries: er.entries, clips: cr.clips
+              };
+              return putFile(ctx, DATA_FILE, JSON.stringify(doc), remote && remote.sha).then(function () {
+                if (localWins) { delete cloud.pendingOld; oldKeyMem = null; return saveCloud(); }
+              }).then(function () { return cr; }, function (e) {
+                if (e.conflict && ++attempt < 5) return round();
+                throw e;
+              });
+            });
+          }
+          return round();
+        }
+        function startSync() {
+          if (!cloud || !ghToken || !key) return Promise.resolve();
+          if (syncRun) { syncAgain = true; return syncRun; }
+          clearTimeout(syncTimer); syncTimer = null;
+          var kk = key;
+          syncRun = doSync().then(function (cr) {
+            if (key !== kk) return;
+            syncRetry = 0;
+            syncState.at = Date.now();
+            if (cr && cr.errors) { setSync("err", "काही आवाज (" + deva(cr.errors) + ") सिंक झाले नाहीत. थोड्या वेळाने पुन्हा प्रयत्न होईल."); retryLater(); }
+            else setSync("ok");
+          }, function (e) {
+            if (key !== kk || (e && e.message === "locked")) return;
+            if (e.offline || navigator.onLine === false) { setSync("offline", errText({ offline: true })); retryLater(); return; }
+            setSync("err", errText(e), e.needPw ? e : null);
+            if (!e.needPw && !(e.status === 401 || e.status === 403 && !e.rate || e.status === 404 || e.badRemote || e.isPublic)) retryLater();
+          }).then(function () {
+            syncRun = null;
+            if (syncAgain) { syncAgain = false; scheduleSync(300); }
+          });
+          return syncRun;
+        }
+        function retryLater() {
+          var ms = Math.min(5 * 60 * 1000, 15000 * Math.pow(2, syncRetry++));
+          scheduleSync(ms);
+        }
+        function scheduleSync(ms) {
+          if (!cloud || !ghToken || !key) return;
+          if (syncState.st === "err" && syncState.needPw) return; /* waits for the user to tap the chip */
+          clearTimeout(syncTimer);
+          syncTimer = setTimeout(function () { syncTimer = null; startSync(); }, ms == null ? SYNC_DEBOUNCE_MS : ms);
+          if (navigator.onLine === false) setSync("offline", errText({ offline: true }));
+        }
+        function saveCloud() { return cloud ? put(META, "cloud", cloud) : del(META, "cloud"); }
+
+        /* ---- status chip ---- */
+        var SYNC_TXT = { ok: "☁️ सिंक झाले", busy: "☁️ सिंक होत आहे…", offline: "☁️ ऑफलाइन – नंतर पाठवू", err: "⚠️ सिंक त्रुटी" };
+        function setSync(st, detail, needPw) {
+          syncState.st = st; syncState.detail = detail || ""; syncState.needPw = needPw || null;
+          var txt = (cloud && key && SYNC_TXT[st]) || "";
+          ["sync-chip", "cloud-chip"].forEach(function (id) {
+            var el = $(id);
+            el.textContent = txt;
+            el.classList.toggle("x-hide", !txt);
+            el.classList.toggle("x-sync--err", st === "err");
+            el.setAttribute("aria-label", txt + (detail ? ". " + detail : ""));
+          });
+          renderCloudState();
+        }
+        function chipTap() {
+          if (syncState.st === "err" && syncState.needPw) {
+            var e = syncState.needPw;
+            return resolveKeyMismatch(e.remote, e.isOld).then(function (ok) {
+              if (ok) { setSync("busy"); startSync(); }
+            }, function () { setSync("err", "पासवर्ड बदलता आला नाही. डायरी आहे तशीच सुरक्षित आहे.", e); });
+          }
+          if (syncState.st === "err") {
+            return ask({ title: "सिंक त्रुटी", text: syncState.detail, yes: "सेटिंग्ज उघडा", no: "बंद करा" }).then(function (ok) {
+              if (ok) openCloud("cal");
+            });
+          }
+          var when = syncState.at ? "शेवटचे सिंक: " + hm(syncState.at) + ". " : "";
+          var text = syncState.st === "offline" ? syncState.detail
+            : syncState.st === "busy" ? "GitHub शी सिंक चालू आहे."
+            : when + "या डिव्हाइसवरील बदल आपोआप GitHub वर जातात आणि दुसऱ्या डिव्हाइसवरचे बदल इथे येतात.";
+          ask({ title: "☁️ क्लाउड सिंक", text: text, yes: "आता सिंक करा", no: "बंद करा" }).then(function (ok) { if (ok) startSync(); });
+        }
+        $("sync-chip").addEventListener("click", chipTap);
+        $("cloud-chip").addEventListener("click", chipTap);
+
+        /* ---- different salt in the cloud: ask that diary's password ---- */
+        function resolveKeyMismatch(remote, isOld) {
+          var rk = null, rd = remote.doc;
+          return ask({
+            title: isOld ? "जुना पासवर्ड टाका" : "क्लाउडवरील डायरीचा पासवर्ड",
+            text: isOld
+              ? "या डिव्हाइसवर पासवर्ड बदलला, पण क्लाउडवर अजून जुन्या पासवर्डची डायरी आहे. ती नव्या पासवर्डने बदलण्यासाठी जुना पासवर्ड एकदा टाका."
+              : "क्लाउडवरील डायरी वेगळ्या पासवर्डने सुरक्षित आहे. तो पासवर्ड टाका. या डिव्हाइसवरील सर्व नोंदी आणि आवाज जपले जातील आणि क्लाउडमधील डायरीत मिसळले जातील. यापुढे या डिव्हाइसवरही डायरी उघडायला हाच पासवर्ड लागेल.",
+            fields: [{ id: "rp", label: isOld ? "जुना पासवर्ड" : "क्लाउडवरील डायरीचा पासवर्ड" }], yes: "पुढे", no: "रद्द करा",
+            validate: function (v) {
+              if (!v.rp) return "पासवर्ड टाका.";
+              return derive(v.rp, unb64(rd.salt), rd.iter || ITER).then(function (k) {
+                return checkKey(k, rd.verifier).then(function (ok) { if (ok) { rk = k; return null; } return "पासवर्ड चुकीचा आहे."; });
+              });
+            }
+          }).then(function (v) {
+            if (!v || !rk) return false;
+            if (isOld) { oldKeyMem = rk; return true; }
+            return adoptRemoteKey(rd, rk).then(function () { return true; });
+          });
+        }
+        /* re-encrypt everything on this device with the cloud diary's key, in one transaction */
+        function adoptRemoteKey(rd, rk) {
+          return queueDay(function () {
+            var kk = key, newMeta = { salt: rd.salt, iter: rd.iter || ITER, verifier: rd.verifier }, out = {}, mOut = [], cloudNew = null;
+            if (!kk) throw new Error("locked");
+            return Promise.all([allEntries(), allMedia()]).then(function (r) {
+              var all = r[0], media = r[1];
+              return seq(Object.keys(all), function (k) {
+                return open(kk, all[k]).then(function (pt) { return seal(rk, pt); }).then(function (rec) { out[k] = rec; });
+              }).then(function () {
+                return seq(media, function (m) {
+                  return crypto.subtle.decrypt({ name: "AES-GCM", iv: m.iv }, kk, m.data).then(function (pt) {
+                    var iv = rand(12);
+                    return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, rk, pt).then(function (ct) {
+                      mOut.push({ id: m.id, date: m.date, entryId: m.entryId, mime: m.mime, createdAt: m.createdAt, iv: iv, data: ct });
+                    });
+                  });
+                });
+              });
+            }).then(function () {
+              return seal(rk, ghToken).then(function (tok) { cloudNew = { repo: cloud.repo, tok: tok }; });
+            }).then(function () {
+              if (key !== kk) throw new Error("locked");
+              return tx([STORE, MEDIA, META], "readwrite", function (s) {
+                Object.keys(out).forEach(function (k) { s[0].put(out[k], k); });
+                mOut.forEach(function (m) { s[1].put(m); });
+                s[2].put(newMeta, "crypto");
+                s[2].put(cloudNew, "cloud");
+              });
+            }).then(function () {
+              revokeClips();
+              key = rk; meta = newMeta; cloud = cloudNew; oldKeyMem = null;
+            });
+          });
+        }
+
+        /* ---- after a merge: redraw what is on screen ---- */
+        function refreshViews() {
+          if (!key) return;
+          if (!$("screen-cal").classList.contains("x-hide")) renderCal();
+          if (!$("screen-day").classList.contains("x-hide") && dayDate) renderDay();
+          if (current && loaded && !dirty && !saving && !$("screen-edit").classList.contains("x-hide")) {
+            var it = findItem(curDate, current);
+            if (it && !listening && !mr) {
+              if ($("edit-area").value !== it.text) $("edit-area").value = it.text;
+              if ($("edit-name").value !== it.title) $("edit-name").value = it.title;
+              if ($("edit-time").value !== it.time) $("edit-time").value = it.time;
+            }
+          }
+        }
+
+        /* ---- token page link + steps ---- */
+        function repoOk(r) { return /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(r || ""); }
+        function cleanRepo(v) {
+          return String(v || "").trim().replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "").replace(/\/+$/, "");
+        }
+        function tokenUrl(repo) {
+          repo = repoOk(repo) ? repo : DEFAULT_REPO;
+          var owner = repo.split("/")[0], name = repo.split("/")[1];
+          var mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || "");
+          var t = new Date();
+          var tname = "Majhi Diary " + (mobile ? "phone" : "PC") + " " + todayKey() + " " + pad(t.getHours()) + pad(t.getMinutes());
+          var desc = "माझी डायरी सिंक. Repository access: Only select repositories → " + name;
+          return "https://github.com/settings/personal-access-tokens/new?name=" + encodeURIComponent(tname) +
+            "&description=" + encodeURIComponent(desc) + "&target_name=" + encodeURIComponent(owner) +
+            "&expires_in=366&contents=write";
+        }
+        function currentRepoInput() {
+          var gh = !$("lock-gh").classList.contains("x-hide");
+          return cleanRepo($(gh ? "fg-repo" : "cl-repo").value) || DEFAULT_REPO;
+        }
+        function renderSteps() {
+          var name = currentRepoInput().split("/")[1] || "majhi-diary-data";
+          var steps = [
+            ["खालील ", "🔑 GitHub वर टोकन बनवा", " बटण दाबा आणि GitHub मध्ये लॉगिन करा. नाव, मुदत (१ वर्ष) आणि ‘Contents: Read and write’ परवानगी आधीच भरलेली असेल."],
+            ["“Repository access” मध्ये ", "Only select repositories", " निवडा आणि यादीतून "],
+            ["सगळ्यात खाली ", "Generate token", " दाबा. दिसलेले टोकन (github_pat_… ने सुरू होणारे) कॉपी करा."],
+            ["इथे परत येऊन ते टोकन ", "GitHub टोकन", " चौकटीत पेस्ट करा. प्रत्येक फोन/कॉम्प्युटरसाठी वेगळे टोकन बनवा."]
+          ];
+          document.querySelectorAll(".gh-steps").forEach(function (ol) {
+            ol.innerHTML = "";
+            steps.forEach(function (s, i) {
+              var li = document.createElement("li");
+              li.appendChild(document.createTextNode(s[0]));
+              var b = document.createElement("b"); b.textContent = s[1]; li.appendChild(b);
+              li.appendChild(document.createTextNode(s[2]));
+              if (i === 1) { var b2 = document.createElement("b"); b2.textContent = name; li.appendChild(b2); li.appendChild(document.createTextNode(" निवडा.")); }
+              ol.appendChild(li);
+            });
+          });
+        }
+        document.querySelectorAll(".gh-token-link").forEach(function (b) {
+          b.addEventListener("click", function () {
+            var u = tokenUrl(currentRepoInput());
+            var w = null;
+            try { w = window.open(u, "_blank", "noopener"); } catch (e) { w = null; }
+            if (!w) location.href = u;
+          });
+        });
+        ["fg-repo", "cl-repo"].forEach(function (id) { $(id).addEventListener("input", renderSteps); });
+
+        /* ---- settings screen ---- */
+        function renderCloudState() {
+          var on = !!(cloud && cloud.repo);
+          var t = on ? "सिंक चालू आहे: " + cloud.repo + (ghToken ? "" : " (टोकन उघडता आले नाही — नवीन टोकन टाका)") : "सिंक बंद आहे. खालील पायऱ्या करून चालू करा.";
+          if (on && syncState.st === "err" && syncState.detail) t += "\n" + syncState.detail;
+          $("cloud-state").textContent = t;
+          $("cloud-now").classList.toggle("x-hide", !on);
+          $("cloud-off").classList.toggle("x-hide", !on);
+          $("cloud-save").textContent = on ? "बदल जतन करा" : "जतन करा आणि सिंक सुरू करा";
+          $("cl-token").placeholder = on && ghToken ? "टोकन जतन केलेले आहे (बदलायचे असल्यासच टाका)" : "github_pat_…";
+        }
+        var cloudFrom = "set";
+        function openCloud(from) {
+          cloudFrom = from === "cal" ? "cal" : "set";
+          $("cloud-msg").textContent = "";
+          $("cl-repo").value = (cloud && cloud.repo) || DEFAULT_REPO;
+          $("cl-token").value = "";
+          renderSteps(); renderCloudState(); setSync(syncState.st, syncState.detail, syncState.needPw);
+          show("screen-cloud"); pushNav("cloud");
+        }
+        $("set-cloud").addEventListener("click", function () { openCloud("set"); });
+        $("cloud-back").addEventListener("click", function () {
+          if (history.state && history.state.v) history.back(); else if (cloudFrom === "cal") backToCal(); else { $("set-msg").textContent = ""; show("screen-set"); }
+        });
+        function cloudMsg(t, ok) { var m = $("cloud-msg"); m.textContent = t; m.classList.toggle("x-ok", !!ok); }
+        $("cloud-save").addEventListener("click", function () {
+          var btn = this, repo = cleanRepo($("cl-repo").value), tok = $("cl-token").value.trim();
+          if (!repoOk(repo)) { cloudMsg("रिपॉझिटरी owner/नाव अशी लिहा, उदा. " + DEFAULT_REPO); return; }
+          if (!tok) tok = ghToken || "";
+          if (!tok) { cloudMsg("GitHub टोकन पेस्ट करा."); return; }
+          if (!key) return;
+          var ctx = { repo: repo, tok: tok }, prev = cloud, prevTok = ghToken, saved = false;
+          btn.disabled = true; cloudMsg("GitHub तपासत आहे…", true);
+          checkRepo(ctx).then(function () {
+            return seal(key, tok);
+          }).then(function (rec) {
+            cloud = { repo: repo, tok: rec };
+            if (prev && prev.repo === repo && prev.pendingOld) cloud.pendingOld = prev.pendingOld;
+            ghToken = tok; saved = true;
+            return saveCloud();
+          }).then(function () {
+            return getFile(ctx, DATA_FILE).then(parseRemote);
+          }).then(function (remote) {
+            if (!remote || remote.doc.salt === meta.salt || (cloud.pendingOld === remote.doc.salt && oldKeyMem)) return true;
+            var isOld = cloud.pendingOld === remote.doc.salt;
+            btn.disabled = false;
+            return resolveKeyMismatch(remote, isOld);
+          }).then(function (ok) {
+            if (!ok) {
+              cloud = prev; ghToken = prevTok;
+              return saveCloud().then(function () { cloudMsg("रद्द केले. या डिव्हाइसवरील डायरी बदललेली नाही."); });
+            }
+            cloudMsg("सिंक होत आहे…", true);
+            setSync("busy");
+            startPoll();
+            return startSync().then(function () {
+              cloudMsg(syncState.st === "ok" ? "सिंक चालू झाले. यापुढे सर्व बदल आपोआप सिंक होतील." : syncState.detail, syncState.st === "ok");
+            });
+          }).catch(function (e) {
+            /* nothing half-done: go back to the previous setting */
+            if (saved) { cloud = prev; ghToken = prevTok; saveCloud().catch(noop); }
+            cloudMsg(errText(e) || "काहीतरी चुकले.");
+          }).then(function () { btn.disabled = false; $("cl-token").value = ""; renderCloudState(); });
+        });
+        $("cloud-now").addEventListener("click", function () {
+          cloudMsg("सिंक होत आहे…", true);
+          startSync().then(function () { cloudMsg(syncState.st === "ok" ? "सिंक झाले." : syncState.detail, syncState.st === "ok"); });
+        });
+        $("cloud-off").addEventListener("click", function () {
+          ask({ title: "सिंक बंद करायचे?", text: "या डिव्हाइसवरील टोकन काढले जाईल. डायरी इथे आणि GitHub वर आहे तशीच राहील.", yes: "बंद करा", no: "नाही", danger: true }).then(function (ok) {
+            if (!ok) return;
+            cloud = null; ghToken = null; oldKeyMem = null; stopPoll(); clearTimeout(syncTimer);
+            saveCloud().then(function () { setSync(""); cloudMsg("सिंक बंद केले.", true); renderCloudState(); });
+          });
+        });
+
+        /* ---- lifecycle ---- */
+        function startPoll() {
+          stopPoll();
+          syncPoll = setInterval(function () { if (!document.hidden) scheduleSync(0); }, SYNC_POLL_MS);
+        }
+        function stopPoll() { if (syncPoll) clearInterval(syncPoll); syncPoll = null; }
+        function cloudOnUnlock() {
+          if (!cloud || !cloud.tok) { setSync(""); return; }
+          var kk = key;
+          open(kk, cloud.tok).then(function (t) {
+            if (key !== kk) return;
+            ghToken = t; setSync("busy"); startPoll(); scheduleSync(0);
+          }, function () {
+            ghToken = null;
+            setSync("err", "जतन केलेले टोकन उघडता आले नाही. सेटिंग्ज → ☁️ क्लाउड सिंक मध्ये टोकन पुन्हा टाका.");
+          });
+        }
+        function cloudOnLock() {
+          stopPoll(); clearTimeout(syncTimer); syncTimer = null;
+          ghToken = null; oldKeyMem = null; syncAgain = false;
+          syncState = { st: "", detail: "", needPw: null, at: 0 };
+          setSync("");
+        }
+        window.addEventListener("online", function () { if (key) scheduleSync(0); });
+        window.addEventListener("offline", function () { if (key && cloud) setSync("offline", errText({ offline: true })); });
+
+        /* ---- first run: fetch my diary from GitHub ---- */
+        function fgMsg(t, ok) { var m = $("fg-msg"); m.textContent = t; m.classList.toggle("x-ok", !!ok); }
+        $("fg-go").addEventListener("click", function () {
+          var btn = this, repo = cleanRepo($("fg-repo").value), tok = $("fg-token").value.trim(), pw = $("fg-pw").value;
+          if (!repoOk(repo)) { fgMsg("रिपॉझिटरी owner/नाव अशी लिहा, उदा. " + DEFAULT_REPO); return; }
+          if (!tok) { fgMsg("GitHub टोकन पेस्ट करा."); return; }
+          if (!pw) { fgMsg("डायरीचा पासवर्ड टाका."); return; }
+          var ctx = { repo: repo, tok: tok }, rd = null, k = null;
+          btn.disabled = true; fgMsg("GitHub शी जोडत आहे…", true);
+          checkRepo(ctx).then(function () {
+            return getFile(ctx, DATA_FILE).then(parseRemote);
+          }).then(function (remote) {
+            if (!remote) throw Object.assign(new Error("empty"), { empty: true });
+            rd = remote.doc;
+            fgMsg("पासवर्ड तपासत आहे…", true);
+            return derive(pw, unb64(rd.salt), rd.iter || ITER);
+          }).then(function (kk) {
+            return checkKey(kk, rd.verifier).then(function (ok) {
+              if (!ok) throw Object.assign(new Error("pw"), { badPw: true });
+              k = kk;
+              return seal(k, tok);
+            });
+          }).then(function (tokRec) {
+            var m = { salt: rd.salt, iter: rd.iter || ITER, verifier: rd.verifier }, c = { repo: repo, tok: tokRec };
+            return tx(META, "readwrite", function (s) { s.put(m, "crypto"); s.put(c, "cloud"); }).then(function () {
+              meta = m; cloud = c; key = k; ghToken = tok;
+            });
+          }).then(function () {
+            fgMsg("नोंदी आणत आहे…", true);
+            return loadAll();
+          }).then(function () {
+            btn.disabled = false; $("fg-token").value = ""; $("fg-pw").value = ""; fgMsg("");
+            goToday(); show("screen-cal");
+            setSync("busy"); startPoll();
+            return startSync();
+          }).catch(function (e) {
+            btn.disabled = false;
+            if (e && e.empty) fgMsg("या रिपॉझिटरीत अजून डायरी नाही. आधी जुन्या फोन/कॉम्प्युटरवर सेटिंग्ज → ☁️ क्लाउड सिंक चालू करा, किंवा “नवीन डायरी सुरू करा” निवडा.");
+            else if (e && e.badPw) { fgMsg("पासवर्ड चुकीचा आहे. दुसऱ्या डिव्हाइसवर डायरी उघडताना जो पासवर्ड टाकता तो टाका."); $("fg-pw").select(); }
+            else fgMsg(errText(e) || "काहीतरी चुकले. पुन्हा प्रयत्न करा.");
+          });
+        });
+        $("fg-pw").addEventListener("keydown", function (e) { if (e.key === "Enter") $("fg-go").click(); });
 
         /* ---------- auto-lock & save on hide ---------- */
         document.addEventListener("visibilitychange", function () {
@@ -2218,6 +3019,8 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
             if (current && dirty) saveNow().catch(function () {});
           } else if (key && hiddenAt && Date.now() - hiddenAt > AUTOLOCK_MS) {
             lock();
+          } else if (key) {
+            scheduleSync(0);
           }
         });
         window.addEventListener("pagehide", function () { if (current && dirty) saveNow().catch(function () {}); });
@@ -2243,6 +3046,10 @@ tr.is-highlight > :last-child { box-shadow: 12px 0 var(--fill-tertiary); }
           return get(META, "crypto");
         }).then(function (m) {
           meta = m || null;
+          return Promise.all([get(META, "cloud"), get(META, "tombs")]);
+        }).then(function (r) {
+          cloud = r[0] || null;
+          if (r[1] && r[1].e && r[1].c) tombs = r[1];
           showLock();
         }).catch(unsupported);
       })();
